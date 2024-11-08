@@ -6,7 +6,7 @@ st.title("Asset Analysis")
 
 github_url = "https://github.com/MisterMandarino"
 st.sidebar.markdown(
-    f'<a href="{github_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="15" height="15" style="vertical-align: middle; margin-right: 10px;">`MisterMandarino`</a>',
+    f'<a href="{github_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="15" height="15" style="vertical-align: middle; margin-right: 10px;">`MisterMandarino`:tangerine:</a>',
     unsafe_allow_html=True,
 )
 
@@ -38,27 +38,49 @@ if analysis_button:
         tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
             [
                 "Profile",
-                "Fundamentals",
-                "ESG Score",
-                "Risk Metrics",
-                "Market Factors",
-                "Treasury Yields"
+                "Balance Sheet",
+                "Income Statement",
+                "Cash Flow",
+                #"ESG Score",
+                "Market Factors (CAPM)",
+                "Economics"
             ]
         )
         with tab1:
             st.markdown("#### Company Profile")
             st.table(analysis.asset_profile)
-            #st.markdown("#### Cumulative Returns")
-            #st.pyplot(analysis.plot_cumulative_returns())
-
+            st.markdown("#### Cumulative Returns")
+            analysis.plot_cumulative_returns()
         with tab2:
             st.markdown("#### Balance Sheet")
             st.table(analysis.balance_sheet)
+            st.markdown("#### Company Income and Investment")
+            analysis.plot_reinvestment_information()
+        with tab3:
             st.markdown("#### Income Statement")
             st.table(analysis.income_statement)
+            st.markdown("#### Company EBITDA")
+            analysis.plot_EBITDA()
+        with tab4:
             st.markdown("#### Cash Flow")
             st.table(analysis.cash_flow)
-            st.markdown("#### Reinvestment Chart")
-            st.pyplot(analysis.plot_reinvestment_information())
-            st.markdown("#### Earnings Before Interest, Taxes, Depreciation and Amortization (EBITDA)")
-            analysis.plot_EBITDA()
+            st.markdown("#### Profitability Ratios")
+            analysis.plot_profitability_ratios()
+            st.markdown("#### Value at Risk (VAR)")
+            analysis.plot_value_at_risk()
+        #with tab5:
+            #st.markdown("#### Environmental, Social, Governance Score (ESG)")
+            #st.table(analysis.esg_scores)
+            #analysis.plot_ESG_score()
+        with tab5:
+            st.markdown("#### Market Factors Correlation")
+            analysis.plot_factors_correlation()
+            st.markdown("#### Market Factors Sensitivity (R-squared)")
+            analysis.plot_factors_sensitivity()
+        with tab6:
+            st.markdown("#### US Treasury Yield Curve")
+            analysis.plot_US_treasury_yield()
+            st.markdown("#### House Price Index")
+            analysis.plot_house_price_index()
+            #st.markdown("#### Unemployment Rates")
+            #analysis.plot_unemployment_rate()

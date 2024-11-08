@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 def main():
-
-    st.set_page_config(page_title="Financial Dashboard", page_icon=":dollar:")
+    min_years = 365*10
+    st.set_page_config(page_title="Financial Dashboard", page_icon=":tangerine:")
 
     st.title("Portfolio Optimization Dashboard")
     #st.sidebar.success("Select a page above.")
@@ -14,7 +14,7 @@ def main():
     #st.markdown("## Portfolio Optimization Dashboard")
     github_url = "https://github.com/MisterMandarino"
     st.sidebar.markdown(
-        f'<a href="{github_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="15" height="15" style="vertical-align: middle; margin-right: 10px;">`MisterMandarino`</a>',
+        f'<a href="{github_url}" target="_blank" style="text-decoration: none; color: inherit;"><img src="https://cdn-icons-png.flaticon.com/512/25/25231.png" width="15" height="15" style="vertical-align: middle; margin-right: 10px;">`MisterMandarino`:tangerine:</a>',
         unsafe_allow_html=True,
     )
     
@@ -30,7 +30,7 @@ def main():
     start_date = start.date_input(
         "Start Date",
         max_value=dt.date.today() - dt.timedelta(days=1),
-        min_value=dt.date.today() - dt.timedelta(days=1250),
+        min_value=dt.date.today() - dt.timedelta(days=min_years),
         value=dt.date.today() - dt.timedelta(days=365),
     )
     end_date = end.date_input(
@@ -124,7 +124,7 @@ def main():
                 st.markdown(f'**Portfolio Returns**: {round(cumulative_returns_p.values[-1], 2)}% ')
                 st.markdown(f'**Portfolio Volatility**: {round(optimizer.annual_optimized_volatility*100, 2)}% ')
                 st.markdown(f'**Portfolio Sharpe-Ratio**: {round(optimizer.optimized_sharpe_ratio, 2)}')
-                st.markdown(f'**Portfolio Sharpe-Ratio**: {round(optimizer.optimized_sortino_ratio, 2)}')
+                st.markdown(f'**Portfolio Sortino-Ratio**: {round(optimizer.optimized_sortino_ratio, 2)}')
                 st.markdown(f'**Benchmark Returns (SP500)**: {round(optimizer.benchmark_cumulative_p.values[-1][0], 2)}% ')
                 st.pyplot(fig)
 

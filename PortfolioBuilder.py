@@ -15,6 +15,7 @@ import datetime as dt
 
 ## Financial Libraries
 from financetoolkit import Toolkit
+from financetoolkit import Economics
 import yfinance as yf
 
 class PortfolioBuilder:
@@ -225,7 +226,7 @@ class PortfolioBuilder:
 
         return max_drawdown
 
-    def MBeta(self):
+    def MBeta(self): ##TODO: check the validity of the regression
         portfolioDailyReturns = np.dot(self.returns, self.optimized_weights)
         portfolio = np.array(portfolioDailyReturns).flatten()
         benchmark = np.array(self.benchmark_returns).flatten()
@@ -253,7 +254,6 @@ class PortfolioBuilder:
         X = sm.add_constant(returns_data["Benchmark"])
         model = sm.OLS(returns_data["Portfolio"], X).fit()
         beta = model.params["Benchmark"]
-
         return beta
 
     def MAlpha(self):
@@ -430,57 +430,58 @@ class Analyzer:
         self.ticker = ticker
         try:
             self.asset = Toolkit(ticker, api_key=api_key, start_date=start)
+            self.economics = Economics(start_date='2016-01-01') #(dt.date.today() - dt.timedelta(days=365*8)).strftime("%Y/%m/%d")
             self.asset_profile = self.asset.get_profile()
             self.income_statement = self.asset.get_income_statement()
             self.cash_flow = self.asset.get_cash_flow_statement()
             self.balance_sheet = self.asset.get_balance_sheet_statement()
-            self.treasury = self.asset.get_treasury_data()
+            self.treasury = self.asset.get_treasury_data(period='yearly')
             self.profitability_ratios = self.asset.ratios.collect_profitability_ratios()
             self.esg_scores = self.asset.get_esg_scores()
         except Exception as e:
             print(e)
 
     def plot_cumulative_returns(self, period='daily'):
-        company_name = self.asset_profile.loc["Company Name"]
+        company_name = self.asset_profile.loc["Company Name"].values[0]
+        plt.clf()
+        plt.figure(figsize=(12,7))
         # Create a line chart for cumulative returns
         ax = self.asset.get_historical_data(period=period)["Cumulative Return"].plot(figsize=(15, 5),lw=2,)
         # Customize the colors and line styles
         ax.set_prop_cycle(color=["#007ACC", "#FF6F61"])
-        ax.set_xlabel("Year")
         ax.set_ylabel("Cumulative Return")
         ax.set_title(f"Cumulative Returns of {company_name} and the S&P 500")
         # Add a legend
         ax.legend([self.ticker, "S&P 500"], loc="upper left")
         # Add grid lines for clarity
         ax.grid(True, linestyle="--", alpha=0.7)
-        return ax
+        st.pyplot(plt)
     
     def plot_reinvestment_information(self,):
+        plt.clf()
         net_income = self.cash_flow.loc["Net Income"] / 1_000_000
         capex = -(self.cash_flow.loc["Capital Expenditure"] / 1_000_000)
         retained_earnings = self.balance_sheet.loc["Retained Earnings"] / 1_000_000
         combined_df = pd.concat([net_income, capex, retained_earnings], axis=1)
         melted_df = combined_df.reset_index().melt(id_vars='date', var_name='Type', value_name='Amount')
-        print(melted_df)
         # Set up the plot
-        fig = plt.figure(figsize=(10, 6))
+        plt.figure(figsize=(12, 7))
         sns.set_theme(style="whitegrid")
         # Plot the profits and reinvestments
         sns.barplot(x='date', y='Amount', hue='Type', data=melted_df)
         # Customize the plot
         plt.title("Company Profits and Reinvestments Over Time")
-        plt.ylabel("Amount (in thousands)")
-        plt.xlabel("Year")
+        plt.ylabel("Amount (in millions)")
         plt.legend(title="Type")
         # Show the plot
-        return fig
+        st.pyplot(plt)
     
     def plot_EBITDA(self, ):
         # Create the bar plot
         plt.clf()
         ebitda_data = self.income_statement.loc["EBITDA", :].T
         colors = ["#007ACC"]
-        ax = ebitda_data.plot.bar(figsize=(15, 5), color=colors)
+        ax = ebitda_data.plot.bar(figsize=(12, 7), color=colors)
         # Add data labels on top of the bars with custom formatting (divided by 1,000,000 for millions and thousand separator)
         for p in ax.patches:
             ebitda_millions = p.get_height() / 1_000_000
@@ -532,7 +533,7 @@ class Analyzer:
         ax = (
             (self.profitability_ratios.dropna(axis=1) * 100)
             .loc[ratios_to_plot, :]
-            .T.plot(figsize=(15, 5), title=f"Profitability Ratios for {self.ticker}", lw=2)
+            .T.plot(figsize=(12, 7), title=f"Profitability Ratios for {self.ticker}", lw=2)
         )
         # Customize the line styles and colors
         line_styles = ["-", "--", "-.", ":"]
@@ -584,12 +585,12 @@ class Analyzer:
 
     def plot_ESG_score(self,):
         plt.clf()
-        score = self.esg_scores.xs(self.ticker, level=1, axis=1)
+        score = self.esg_scores#.xs(self.ticker, level=1, axis=1)
         # Plotting
-        fig, ax = plt.subplots(figsize=(10, 6))
+        fig, ax = plt.subplots(figsize=(12, 7))
         width = 0.2  # Width of each bar
         # Create positions for each quarter
-        quarters = range(len(score['date']))
+        quarters = range(len(score.index))
         # Plot each ESG score as a bar series
         ax.bar([x - width for x in quarters], score['Environmental Score'], width=width, label='Environmental', color='skyblue')
         ax.bar(quarters, score['Social Score'], width=width, label='Social', color='salmon')
@@ -598,20 +599,20 @@ class Analyzer:
         ax.plot(quarters, score['ESG Score'], color='black', marker='o', linestyle='-', linewidth=2, label='ESG score')
         # Labeling
         ax.set_xticks(quarters)
-        ax.set_xticklabels(score['date'])
+        ax.set_xticklabels(score.index)
         ax.set_xlabel('Quarter')
         ax.set_ylabel('Score')
         ax.set_title('Quarterly ESG Scores')
         ax.legend()
         st.pyplot(plt)
 
-    def plot_factors_correlation(self, period='quaterly'):
+    def plot_factors_correlation(self, period='quarterly'):
         plt.clf()
         factor_asset_correlations = self.asset.performance.get_factor_asset_correlations(period=period)
         # Define your factor_asset_correlations DataFrame (replace YourDataFrame)
         correlations = factor_asset_correlations.xs(self.ticker, axis=1, level=0)
         # Create subplots with shared x-axis and customize styles
-        fig, ax = plt.figure(figsize=(15, 8))
+        fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(12, 7))
         # Set a color palette for the lines
         colors = ["#007ACC", "#FF6F61", "#4CAF50", "#FFD700", "#FF6347", "#6A5ACD", "#FF8C00"]
         # Plot correlations 
@@ -627,4 +628,71 @@ class Analyzer:
         # Remove spines on the top and right side of the subplots
         ax.spines[["top", "right"]].set_visible(False)
         # Show the plots
+        st.pyplot(plt)
+
+    def plot_factors_sensitivity(self, period='quarterly'):
+        plt.clf()
+        plt.figure(figsize=(12, 7))
+        fama_and_french = self.asset.performance.get_fama_and_french_model(period=period, method="simple")
+        fama_and_french[self.ticker].xs("R Squared", level=1, axis=1).plot(
+            figsize=(12, 7),
+            title=f"Factor Sensitivities of {self.ticker}",
+            grid=True,
+            colormap="plasma",
+            lw=2,
+            linestyle="-",
+            ylabel="Sensitivity",
+            xlabel="Date",
+        )
+        st.pyplot(plt)
+
+    def plot_US_treasury_yield(self,):
+        plt.clf()
+        treasury = self.treasury['Adj Close']
+        maturities = ['13 Week', '5 Year', '10 Year', '30 Year']
+        maturity_labels = [0.25, 5, 10, 30]  # Approximate years for x-axis
+        # Plot the yield curve for each date
+        plt.figure(figsize=(12, 7))
+
+        for date, row in treasury.iterrows():
+            yields = row.values  # yields for each maturity on a given date
+            plt.plot(maturity_labels, yields, marker='o', label=date.strftime('%Y'))
+        # Add labels and title
+        plt.xlabel("Maturity (Years)")
+        plt.ylabel("Yield (%)")
+        plt.legend(title="Date")
+        plt.grid(True)
+        st.pyplot(plt)
+
+    def plot_house_price_index(self,):
+        plt.clf()
+        plt.figure(figsize=(12,7))
+        house_prices = self.economics.get_house_prices()
+        house_prices = house_prices[["Australia", "United States", "United Kingdom", "Germany", "Japan", "China"]]
+        house_prices.plot(
+            figsize=(12, 7),
+            grid=True,
+            xlabel="Date",
+            ylabel="House Prices (Base 100)",
+        )
+        st.pyplot(plt)
+
+    def plot_unemployment_rate(self,):
+        plt.clf()
+        unemployment_rate = self.asset.economics.get_unemployment_rate()
+        unemployment_rates_df = unemployment_rate[["Australia", "United States", "United Kingdom", "Germany", "Japan"]]
+        # Convert PeriodIndex to string
+        unemployment_rates_df.index = unemployment_rates_df.index.astype(str)
+        # Plotting with Seaborn for better aesthetics
+        plt.figure(figsize=(12, 7))
+        sns.set_style("whitegrid")
+        palette = sns.color_palette("husl", len(unemployment_rates_df.columns))
+        # Plotting a bar plot
+        (unemployment_rates_df * 100).plot(kind="bar", width=0.8, color=palette, edgecolor="black")
+        plt.title("Unemployment Rates Over Time", fontsize=16)
+        plt.xlabel("Year", fontsize=12)
+        plt.ylabel("Unemployment Rate (%)", fontsize=12)
+        plt.legend(title="Country", fontsize=10, title_fontsize=12)
+        plt.grid(True, linestyle="--", alpha=0.7)
+        plt.tight_layout()
         st.pyplot(plt)
